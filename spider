@@ -1,0 +1,62 @@
+#! /bin/bash
+# Crawl a site to 'prime' the frontend cache. Outputs total time taken for one run to stdout and a log to stderr.
+# // TODO: outputs ecverything to stderr at the moment
+# It will not spawn multiple times (locking mechanism). Thus it is save calling it in an often-running cronjob. Keep in mind that it might
+# affect your stats counter if does not ignore the wget user-agent.
+#
+# @param URL $1
+# @param Depth $2
+# @param User $3 (HTTP-Auth)
+# @param Password $4 (HTTP-Auth)
+# @param Cookiefile (see wget --load-cookies)
+
+URL="$1"
+if [ -z "$URL" ]; then
+        echo 'ERROR: no URL given'
+        exit 1
+fi
+
+DEPTH="$2"
+if [ -z "$DEPTH" ]; then
+        DEPTH=3
+fi
+
+if [ "$DEPTH" == "0" ]; then
+        RECURSIVE=""
+else
+        RECURSIVE="-r"
+fi
+
+COOKIEFILE="$5"
+if [ -z "$COOKIEFILE" ]; then
+        LOADCOOKIES=""
+else
+        LOADCOOKIES="--load-cookies=\"$COOKIEFILE\""
+fi
+
+
+THIS=$(readlink -f $0)
+THISDIR=$(dirname $THIS)
+THISDIRBASE=$THISDIR/$(basename $0)
+URL_sanitized=$(echo $URL$DEPTH | sed -r s/[:/]/_/g)
+
+LOCKFILE=/var/lock/$(basename $0)_${URL_sanitized}
+{
+        if ! flock -n 9; then
+                #echo "Unable to lock $LOCKFILE, exiting" 2>&1
+                exit 1
+        fi
+
+        # remove lockfile
+        trap "rm $LOCKFILE 2> /dev/null" EXIT INT KILL TERM
+
+        echo STARTED $(date -Is -u)
+        time \
+			wget $LOADCOOKIES \
+				--header 'User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:51.0) Gecko/20100101 Firefox/51.0' \
+				--no-check-certificate -U'd-mind SpiderBot' -nv -e robots=off -R.css,.js,.jpg,.png,.pdf -nd $RECURSIVE \
+				--delete-after -l $DEPTH \
+				--user=$3 --password=$4 $URL
+		
+} 9>"$LOCKFILE" 
+
