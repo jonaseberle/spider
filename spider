@@ -22,7 +22,7 @@ fi
 if [ "$DEPTH" == "0" ]; then
         RECURSIVE=""
 else
-        RECURSIVE="-r"
+        RECURSIVE="--recursive"
 fi
 
 COOKIEFILE="$5"
@@ -52,10 +52,10 @@ LOCKFILE=/var/lock/$(basename $0)_${URL_sanitized}
         time \
 		wget $LOADCOOKIES \
 			--header 'User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:51.0) Gecko/20100101 Firefox/51.0' \
-			--no-check-certificate -nv -e robots=off \
-			-R.css,.js,.jpg,.JPG,.jpeg,.JPEG,.png,.PNG,.pdf,.PDF,.gif,.GIF,.mp4,.MP4,.svg,.SVG,.json,.JSON,.ico \
-			-nd $RECURSIVE \
-			--delete-after -l $DEPTH \
+			--no-check-certificate --no-verbose --execute robots=off \
+			--reject '*.*' \
+			--no-directories $RECURSIVE \
+			--delete-after --level=$DEPTH \
 			--user=$3 --password=$4 $URL
 		
 } 9>"$LOCKFILE" 
