@@ -12,15 +12,15 @@ set -o errexit -o pipefail -o noclobber -o nounset
 
 url="${1-}"
 if [ -z "$url" ]; then
-        echo 'ERROR: no URL given'
-        exit 1
+  echo 'ERROR: no URL given'
+  exit 1
 fi
 
 depth="${2-3}"
 if [ "$depth" == "0" ]; then
-        recursive=""
+  recursive=""
 else
-        recursive="--recursive"
+  recursive="--recursive"
 fi
 
 user="${3-}"
@@ -28,43 +28,39 @@ password="${3-}"
 
 cookieFile="${5-}"
 if [ -z "$cookieFile" ]; then
-        loadCookies=""
+  loadCookies=""
 else
-        loadCookies="--load-cookies=\"$cookieFile\""
+  loadCookies="--load-cookies=\"$cookieFile\""
 fi
 
 function shutdown() {
-  [ -d "$tmpDir" ] &&  rm -rf "$tmpDir"
+  [ -d "$tmpDir" ] && rm -rf "$tmpDir"
+  [ -f "$lockFile" ] && rm "$lockFile"
 }
-trap shutdown INT
+trap shutdown EXIT INT TERM
 tmpDir="$(mktemp -d)"
 cd "$tmpDir"
 
 
-this=$(readlink -f $0)
-thisDir=$(dirname $this)
-thisDirBase=$thisDir/$(basename $0)
-urlSanitized=$(echo $url$depth | sed -r s/[:/]/_/g)
+urlSanitized=$(echo "$url$depth" | sed -r s/[:/]/_/g)
 
-lockFile=/var/lock/$(basename $0)_${urlSanitized}
+lockFile="/var/lock/$(basename "$0")_${urlSanitized}"
 {
-        if ! flock -n 9; then
-                #echo "Unable to lock $lockFile, exiting" 2>&1
-                exit 1
-        fi
+  if ! flock -n 9; then
+    echo "Already running (found lock $lockFile), exiting" 2>&1
+    exit 1
+  fi
 
-        # remove lockfile
-        trap "rm $lockFile 2> /dev/null" EXIT INT KILL TERM
+  echo STARTED "$(date -Is -u)"
+  cmd="wget \
+    --header 'User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:51.0) Gecko/20100101 Firefox/51.0' \
+    --no-check-certificate --no-verbose --execute robots=off \
+    --reject '*.*' \
+    --no-directories $recursive $loadCookies \
+    --delete-after --level=\"$depth\" \
+    --user=\"$user\" --password=\"$password\" \"$url\""
+  time eval "$cmd"
 
-        echo STARTED $(date -Is -u)
-        time \
-		wget $loadCookies \
-			--header 'User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:51.0) Gecko/20100101 Firefox/51.0' \
-			--no-check-certificate --no-verbose --execute robots=off \
-			--reject '*.*' \
-			--no-directories $recursive \
-			--delete-after --level=$depth \
-			--user="$user" --password="$password" "$url"
-		
 } 9>"$lockFile" 
 
+# vim: syntax=bash ts=2 sw=2 et:
