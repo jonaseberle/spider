@@ -8,55 +8,55 @@
 # @param Password $4 (HTTP-Auth)
 # @param Cookiefile (see wget --load-cookies)
 
-URL="$1"
-if [ -z "$URL" ]; then
+url="$1"
+if [ -z "$url" ]; then
         echo 'ERROR: no URL given'
         exit 1
 fi
 
-DEPTH="$2"
-if [ -z "$DEPTH" ]; then
-        DEPTH=3
+depth="$2"
+if [ -z "$depth" ]; then
+        depth=3
 fi
 
-if [ "$DEPTH" == "0" ]; then
-        RECURSIVE=""
+if [ "$depth" == "0" ]; then
+        recursive=""
 else
-        RECURSIVE="--recursive"
+        recursive="--recursive"
 fi
 
-COOKIEFILE="$5"
-if [ -z "$COOKIEFILE" ]; then
-        LOADCOOKIES=""
+cookieFile="$5"
+if [ -z "$cookieFile" ]; then
+        loadCookies=""
 else
-        LOADCOOKIES="--load-cookies=\"$COOKIEFILE\""
+        loadCookies="--load-cookies=\"$cookieFile\""
 fi
 
 
-THIS=$(readlink -f $0)
-THISDIR=$(dirname $THIS)
-THISDIRBASE=$THISDIR/$(basename $0)
-URL_sanitized=$(echo $URL$DEPTH | sed -r s/[:/]/_/g)
+this=$(readlink -f $0)
+thisDir=$(dirname $this)
+thisDirBase=$thisDir/$(basename $0)
+urlSanitized=$(echo $url$depth | sed -r s/[:/]/_/g)
 
-LOCKFILE=/var/lock/$(basename $0)_${URL_sanitized}
+lockFile=/var/lock/$(basename $0)_${urlSanitized}
 {
         if ! flock -n 9; then
-                #echo "Unable to lock $LOCKFILE, exiting" 2>&1
+                #echo "Unable to lock $lockFile, exiting" 2>&1
                 exit 1
         fi
 
         # remove lockfile
-        trap "rm $LOCKFILE 2> /dev/null" EXIT INT KILL TERM
+        trap "rm $lockFile 2> /dev/null" EXIT INT KILL TERM
 
         echo STARTED $(date -Is -u)
         time \
-		wget $LOADCOOKIES \
+		wget $loadCookies \
 			--header 'User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:51.0) Gecko/20100101 Firefox/51.0' \
 			--no-check-certificate --no-verbose --execute robots=off \
 			--reject '*.*' \
-			--no-directories $RECURSIVE \
-			--delete-after --level=$DEPTH \
-			--user=$3 --password=$4 $URL
+			--no-directories $recursive \
+			--delete-after --level=$depth \
+			--user=$3 --password=$4 "$url"
 		
-} 9>"$LOCKFILE" 
+} 9>"$lockFile" 
 
