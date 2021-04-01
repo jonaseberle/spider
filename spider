@@ -24,7 +24,7 @@ else
 fi
 
 user="${3-}"
-password="${3-}"
+password="${4-}"
 
 cookieFile="${5-}"
 if [ -z "$cookieFile" ]; then
